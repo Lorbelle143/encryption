@@ -1,0 +1,95 @@
+.files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.file-item {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.file-info h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 8px 0;
+}
+
+.file-info p {
+  font-size: 14px;
+  color: #666;
+  margin: 4px 0;
+}
+
+.file-date {
+  font-size: 13px;
+  color: #999;
+}
+
+.file-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.empty-icon {
+  font-size: 80px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.empty-state h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #666;
+  margin: 0 0 8px 0;
+}
+
+.empty-state p {
+  font-size: 14px;
+  color: #999;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .file-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .file-info {
+    width: 100%;
+  }
+  
+  .file-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .file-actions .badge {
+    width: 100%;
+    text-align: center;
+    padding: 8px 12px;
+  }
+  
+  .file-actions .btn-secondary {
+    flex: 1;
+  }
+  
+  .file-actions .btn-danger {
+    width: 52px;
+  }
+}
