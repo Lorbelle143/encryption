@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import './FileUpload.css';
 
 function FileUpload() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const history = useHistory();
   const [studentName, setStudentName] = useState('');
   const [formType, setFormType] = useState('');
@@ -16,10 +16,11 @@ function FileUpload() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return; // ⛔ wait for auth
     if (!isAdmin()) {
       history.push('/dashboard');
     }
-  }, [isAdmin, history]);
+  }, [authLoading, isAdmin, history]);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -41,23 +42,44 @@ function FileUpload() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!file) {
+      setMessage('Please select a PDF file to upload');
+      return;
+    }
+    
     setLoading(true);
     setMessage('');
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
+      if (!user) {
+        throw new Error('You must be logged in to upload files');
+      }
+      
       let fileUrl = null;
       if (file) {
         const fileName = `${Date.now()}_${file.name}`;
-        const { error } = await supabase.storage
-          .from('office-forms')
-          .upload(fileName, file);
+        console.log('Uploading file:', fileName);
         
-        if (error) throw error;
+        const { data, error } = await supabase.storage
+          .from('office-forms')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+        
+        if (error) {
+          console.error('Upload error:', error);
+          throw new Error(`Upload failed: ${error.message}`);
+        }
+        
+        console.log('Upload successful:', data);
         fileUrl = fileName;
       }
 
+      console.log('Saving to database...');
       const { error: dbError } = await supabase
         .from('forms')
         .insert({
@@ -69,8 +91,12 @@ function FileUpload() {
           created_by: user.id
         });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Database error:', dbError);
+        throw new Error(`Database error: ${dbError.message}`);
+      }
 
+      console.log('Save successful!');
       setMessage('File uploaded successfully!');
       setStudentName('');
       setFormType('');
@@ -86,7 +112,8 @@ function FileUpload() {
         history.push('/files');
       }, 2000);
     } catch (error) {
-      setMessage(error.message);
+      console.error('Error:', error);
+      setMessage(error.message || 'An error occurred during upload');
     } finally {
       setLoading(false);
     }
@@ -180,9 +207,25 @@ function FileUpload() {
               </div>
             )}
 
-            <button type="submit" className="btn-primary" disabled={loading}>
+            <button 
+              type="submit" 
+              className="btn-primary" 
+              disabled={loading || !file}
+              onClick={(e) => {
+                console.log('Button clicked!');
+                console.log('File:', file);
+                console.log('Student Name:', studentName);
+                console.log('Form Type:', formType);
+              }}
+            >
               {loading ? 'Uploading...' : '☁️ Upload File'}
             </button>
+            
+            {!file && (
+              <p style={{ color: '#eb445a', fontSize: '14px', marginTop: '8px', textAlign: 'center' }}>
+                Please select a PDF file before uploading
+              </p>
+            )}
           </form>
         </div>
       </div>

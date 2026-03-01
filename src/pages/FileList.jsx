@@ -5,18 +5,19 @@ import { useAuth } from '../hooks/useAuth';
 import './FileList.css';
 
 function FileList() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const history = useHistory();
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) return; // ⛔ wait for auth
     if (!isAdmin()) {
       history.push('/dashboard');
     } else {
       fetchFiles();
     }
-  }, [isAdmin, history]);
+  }, [authLoading, isAdmin, history]);
 
   const fetchFiles = async () => {
     setLoading(true);
