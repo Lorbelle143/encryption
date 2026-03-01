@@ -61,7 +61,7 @@ function Dashboard() {
       <header className="header dashboard-header">
         <div className="header-left">
           <div className="logo">
-            <img src="/logo.png" alt="NBSC Logo" />
+            <img src="/logo.png" alt="" />
           </div>
           <div className="header-info">
             <h1>NBSC Guidance Counseling</h1>
