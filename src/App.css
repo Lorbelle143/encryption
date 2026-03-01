@@ -172,9 +172,19 @@ button:disabled {
   padding: 12px;
   border-radius: 8px;
   margin: 16px 0;
-  background: #e8f0fe;
-  color: #1967d2;
   text-align: center;
+}
+
+.message-success {
+  background: #d1f4e0;
+  color: #0f5132;
+  border: 1px solid #a3e4c1;
+}
+
+.message-error {
+  background: #f8d7da;
+  color: #842029;
+  border: 1px solid #f5c2c7;
 }
 
 @media (max-width: 768px) {

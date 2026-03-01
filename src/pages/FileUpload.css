@@ -52,11 +52,24 @@
 
 .selected-file {
   margin-top: 16px;
-  padding: 12px;
+  padding: 16px;
   background: white;
   border-radius: 8px;
   color: #333;
   font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #e0e0e0;
+}
+
+.file-name {
+  font-weight: 500;
+}
+
+.file-size {
+  color: #666;
+  font-size: 13px;
 }
 
 .form-card .btn-primary {

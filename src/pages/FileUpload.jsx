@@ -22,7 +22,21 @@ function FileUpload() {
   }, [isAdmin, history]);
 
   const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      if (selectedFile.type !== 'application/pdf') {
+        setMessage('Please select a PDF file only');
+        setFile(null);
+        return;
+      }
+      if (selectedFile.size > 10 * 1024 * 1024) { // 10MB limit
+        setMessage('File size must be less than 10MB');
+        setFile(null);
+        return;
+      }
+      setFile(selectedFile);
+      setMessage('');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -63,7 +77,14 @@ function FileUpload() {
       setNotes('');
       setFile(null);
       
-      setTimeout(() => setMessage(''), 3000);
+      // Reset file input
+      const fileInput = document.getElementById('file-input');
+      if (fileInput) fileInput.value = '';
+      
+      setTimeout(() => {
+        setMessage('');
+        history.push('/files');
+      }, 2000);
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -101,7 +122,7 @@ function FileUpload() {
                 type="text"
                 value={formType}
                 onChange={(e) => setFormType(e.target.value)}
-                placeholder="e.g., Counseling Record"
+                placeholder="e.g., Counseling Record, Medical Form"
                 required
                 disabled={loading}
               />
@@ -135,19 +156,29 @@ function FileUpload() {
             <div className="file-input-container">
               <label htmlFor="file-input" className="file-input-label">
                 <div className="file-icon">📎</div>
-                <strong>Choose a file</strong>
+                <strong>Choose a PDF file</strong>
                 <p>or drag and drop here</p>
                 <input
                   id="file-input"
                   type="file"
+                  accept=".pdf,application/pdf"
                   onChange={handleFileChange}
                   disabled={loading}
                 />
               </label>
-              {file && <div className="selected-file">Selected: {file.name}</div>}
+              {file && (
+                <div className="selected-file">
+                  <span className="file-name">📄 {file.name}</span>
+                  <span className="file-size">({(file.size / 1024).toFixed(2)} KB)</span>
+                </div>
+              )}
             </div>
 
-            {message && <div className="message">{message}</div>}
+            {message && (
+              <div className={`message ${message.includes('success') ? 'message-success' : 'message-error'}`}>
+                {message}
+              </div>
+            )}
 
             <button type="submit" className="btn-primary" disabled={loading}>
               {loading ? 'Uploading...' : '☁️ Upload File'}

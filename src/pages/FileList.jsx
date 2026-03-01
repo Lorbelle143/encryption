@@ -32,16 +32,36 @@ function FileList() {
   };
 
   const downloadFile = async (fileUrl) => {
-    const { data, error } = await supabase.storage
-      .from('office-forms')
-      .download(fileUrl);
+    try {
+      const { data, error } = await supabase.storage
+        .from('office-forms')
+        .download(fileUrl);
 
-    if (!error) {
+      if (error) throw error;
+
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = fileUrl;
+      a.download = fileUrl.split('_').slice(1).join('_') || fileUrl;
       a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      alert('Error downloading file: ' + error.message);
+    }
+  };
+
+  const viewFile = async (fileUrl) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('office-forms')
+        .download(fileUrl);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      window.open(url, '_blank');
+    } catch (error) {
+      alert('Error viewing file: ' + error.message);
     }
   };
 
@@ -103,16 +123,27 @@ function FileList() {
                     {file.classification}
                   </span>
                   {file.file_url && (
-                    <button
-                      onClick={() => downloadFile(file.file_url)}
-                      className="btn-secondary"
-                    >
-                      ⬇️ Download
-                    </button>
+                    <>
+                      <button
+                        onClick={() => viewFile(file.file_url)}
+                        className="btn-view"
+                        title="View PDF"
+                      >
+                        👁️ View
+                      </button>
+                      <button
+                        onClick={() => downloadFile(file.file_url)}
+                        className="btn-secondary"
+                        title="Download PDF"
+                      >
+                        ⬇️ Download
+                      </button>
+                    </>
                   )}
                   <button
                     onClick={() => deleteFile(file.id, file.file_url)}
                     className="btn-danger"
+                    title="Delete"
                   >
                     🗑️
                   </button>
