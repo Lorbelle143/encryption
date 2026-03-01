@@ -35,9 +35,7 @@ function FileList() {
       console.log('Is admin, fetching files');
       fetchFiles();
     }
-  }, [authLoading]); // Remove isAdmin and history from dependencies
-    setLoading(false);
-  };
+  }, [authLoading]);
 
   const getFileIcon = (fileName) => {
     return '📕';
