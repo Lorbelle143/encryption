@@ -56,8 +56,10 @@ function Login() {
     <div className="login-page">
       <div className="login-container">
         <div className="login-header">
-          <div className="login-icon">🔒</div>
-          <h1>Encrypted Office Forms</h1>
+          <div className="login-icon">
+            <img src="/logo.png" alt="NBSC Logo" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
+          </div>
+          <h1>NBSC Guidance Counseling</h1>
           <p>Secure Document Management System</p>
         </div>
 

@@ -1,8 +1,8 @@
 {
-  "name": "encrypted-office-forms",
+  "name": "nbsc-guidance-counseling",
   "version": "1.0.0",
   "type": "module",
-  "description": "Encrypted storage system for guidance office records",
+  "description": "NBSC Guidance Counseling - Secure document management system",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

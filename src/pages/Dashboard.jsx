@@ -60,9 +60,11 @@ function Dashboard() {
     <div className="page dashboard-page">
       <header className="header dashboard-header">
         <div className="header-left">
-          <div className="logo">🔐</div>
+          <div className="logo">
+            <img src="/logo.png" alt="NBSC Logo" />
+          </div>
           <div className="header-info">
-            <h1>Office Forms Manager</h1>
+            <h1>NBSC Guidance Counseling</h1>
             <p className="header-subtitle">Secure Document Management</p>
           </div>
         </div>
