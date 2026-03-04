@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import './Dashboard.css';
 
@@ -14,8 +13,9 @@ function Dashboard() {
     }
   }, [user, loading, history]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('authTime');
     history.push('/login');
   };
 
@@ -64,7 +64,7 @@ function Dashboard() {
         </div>
         <div className="header-right">
           <div className="user-info">
-            <span className="user-name">{user?.email}</span>
+            <span className="user-name">Administrator</span>
             <span className="badge badge-admin">{role}</span>
           </div>
           <button onClick={handleLogout} className="btn-logout">

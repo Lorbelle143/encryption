@@ -7,11 +7,11 @@ import './FileUpload.css';
 function FileUpload() {
   const { isAdmin, loading: authLoading } = useAuth();
   const history = useHistory();
-  const [studentName, setStudentName] = useState('');
-  const [formType, setFormType] = useState('');
+  const [folderName, setFolderName] = useState('');
+  const [folderPassword, setFolderPassword] = useState('');
   const [classification, setClassification] = useState('CONFIDENTIAL');
   const [notes, setNotes] = useState('');
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -23,28 +23,36 @@ function FileUpload() {
   }, [authLoading, isAdmin, history]);
 
   const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      if (selectedFile.type !== 'application/pdf') {
-        setMessage('Please select a PDF file only');
-        setFile(null);
-        return;
-      }
-      if (selectedFile.size > 10 * 1024 * 1024) { // 10MB limit
-        setMessage('File size must be less than 10MB');
-        setFile(null);
-        return;
-      }
-      setFile(selectedFile);
-      setMessage('');
+    const selectedFiles = Array.from(e.target.files);
+    
+    if (selectedFiles.length === 0) {
+      setMessage('Please select at least one file');
+      setFiles([]);
+      return;
     }
+
+    // Validate all files
+    const invalidFiles = selectedFiles.filter(file => {
+      if (file.type !== 'application/pdf') return true;
+      if (file.size > 10 * 1024 * 1024) return true; // 10MB limit
+      return false;
+    });
+
+    if (invalidFiles.length > 0) {
+      setMessage('All files must be PDF and less than 10MB each');
+      setFiles([]);
+      return;
+    }
+
+    setFiles(selectedFiles);
+    setMessage('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!file) {
-      setMessage('Please select a PDF file to upload');
+    if (files.length === 0) {
+      setMessage('Please select files to upload');
       return;
     }
     
@@ -52,16 +60,15 @@ function FileUpload() {
     setMessage('');
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('You must be logged in to upload files');
-      }
-      
-      let fileUrl = null;
-      if (file) {
-        const fileName = `${Date.now()}_${file.name}`;
-        console.log('Uploading file:', fileName);
+      const timestamp = Date.now();
+      const uploadedFiles = [];
+
+      // Upload all files
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileName = `${folderName}/${timestamp}_${file.name}`;
+        
+        console.log(`Uploading file ${i + 1}/${files.length}:`, fileName);
         
         const { data, error } = await supabase.storage
           .from('office-forms')
@@ -72,23 +79,22 @@ function FileUpload() {
         
         if (error) {
           console.error('Upload error:', error);
-          throw new Error(`Upload failed: ${error.message}`);
+          throw new Error(`Upload failed for ${file.name}: ${error.message}`);
         }
         
-        console.log('Upload successful:', data);
-        fileUrl = fileName;
+        uploadedFiles.push(fileName);
       }
 
       console.log('Saving to database...');
       const { error: dbError } = await supabase
-        .from('forms')
+        .from('folders')
         .insert({
-          student_name: studentName,
-          form_type: formType,
+          folder_name: folderName,
+          folder_password: folderPassword,
           classification,
           notes,
-          file_url: fileUrl,
-          created_by: user.id
+          file_count: files.length,
+          file_urls: uploadedFiles
         });
 
       if (dbError) {
@@ -97,11 +103,11 @@ function FileUpload() {
       }
 
       console.log('Save successful!');
-      setMessage('File uploaded successfully!');
-      setStudentName('');
-      setFormType('');
+      setMessage(`Folder uploaded successfully! (${files.length} files)`);
+      setFolderName('');
+      setFolderPassword('');
       setNotes('');
-      setFile(null);
+      setFiles([]);
       
       // Reset file input
       const fileInput = document.getElementById('file-input');
@@ -136,27 +142,30 @@ function FileUpload() {
         <div className="form-card">
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>Student Name</label>
+              <label>Folder Name</label>
               <input
                 type="text"
-                value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
-                placeholder="Enter student name"
+                value={folderName}
+                onChange={(e) => setFolderName(e.target.value)}
+                placeholder="Enter folder name"
                 required
                 disabled={loading}
               />
             </div>
 
             <div className="form-group">
-              <label>Form Type</label>
+              <label>Folder Password</label>
               <input
-                type="text"
-                value={formType}
-                onChange={(e) => setFormType(e.target.value)}
-                placeholder="e.g., Counseling Record, Medical Form"
+                type="password"
+                value={folderPassword}
+                onChange={(e) => setFolderPassword(e.target.value)}
+                placeholder="Set a password to protect this folder"
                 required
                 disabled={loading}
               />
+              <small style={{ color: '#666', fontSize: '12px' }}>
+                This password will be required to view files in this folder
+              </small>
             </div>
 
             <div className="form-group">
@@ -186,21 +195,29 @@ function FileUpload() {
 
             <div className="file-input-container">
               <label htmlFor="file-input" className="file-input-label">
-                <div className="file-icon">📎</div>
-                <strong>Choose a PDF file</strong>
-                <p>Only PDF files are allowed (Max 10MB)</p>
+                <div className="file-icon">📁</div>
+                <strong>Choose PDF files (Multiple)</strong>
+                <p>Select multiple PDF files (Max 10MB each)</p>
                 <input
                   id="file-input"
                   type="file"
                   accept=".pdf,application/pdf"
                   onChange={handleFileChange}
                   disabled={loading}
+                  multiple
+                  webkitdirectory=""
+                  directory=""
                 />
               </label>
-              {file && (
-                <div className="selected-file">
-                  <span className="file-name">📄 {file.name}</span>
-                  <span className="file-size">({(file.size / 1024).toFixed(2)} KB)</span>
+              {files.length > 0 && (
+                <div className="selected-files">
+                  <p><strong>{files.length} file(s) selected:</strong></p>
+                  {files.map((file, index) => (
+                    <div key={index} className="selected-file">
+                      <span className="file-name">📄 {file.name}</span>
+                      <span className="file-size">({(file.size / 1024).toFixed(2)} KB)</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -214,20 +231,14 @@ function FileUpload() {
             <button 
               type="submit" 
               className="btn-primary" 
-              disabled={loading || !file}
-              onClick={(e) => {
-                console.log('Button clicked!');
-                console.log('File:', file);
-                console.log('Student Name:', studentName);
-                console.log('Form Type:', formType);
-              }}
+              disabled={loading || files.length === 0}
             >
-              {loading ? 'Uploading...' : '☁️ Upload File'}
+              {loading ? 'Uploading...' : '☁️ Upload Folder'}
             </button>
             
-            {!file && (
+            {files.length === 0 && (
               <p style={{ color: '#eb445a', fontSize: '14px', marginTop: '8px', textAlign: 'center' }}>
-                Please select a PDF file before uploading
+                Please select files before uploading
               </p>
             )}
           </form>

@@ -9,11 +9,15 @@ function FileList() {
   const history = useHistory();
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedFolder, setSelectedFolder] = useState(null);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
   const fetchFiles = async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from('forms')
+      .from('folders')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -45,6 +49,25 @@ function FileList() {
     return 'PDF';
   };
 
+  const openFolder = (folder) => {
+    setSelectedFolder(folder);
+    setShowPasswordModal(true);
+    setPasswordInput('');
+    setPasswordError('');
+  };
+
+  const verifyPassword = () => {
+    if (passwordInput === selectedFolder.folder_password) {
+      setShowPasswordModal(false);
+      setPasswordError('');
+      // Show files in the folder
+      alert(`Folder unlocked! Files: ${selectedFolder.file_urls.length}`);
+      // You can implement a file viewer here
+    } else {
+      setPasswordError('Incorrect password');
+    }
+  };
+
   const downloadFile = async (fileUrl) => {
     try {
       const { data, error } = await supabase.storage
@@ -56,7 +79,7 @@ function FileList() {
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = fileUrl.split('_').slice(1).join('_') || fileUrl;
+      a.download = fileUrl.split('/').pop();
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -75,35 +98,34 @@ function FileList() {
       const blob = new Blob([data], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       
-      // Open PDF in new tab
       window.open(url, '_blank');
       
-      // Clean up after a delay
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) {
       alert('Error viewing file: ' + error.message);
     }
   };
 
-  const deleteFile = async (fileId, fileUrl) => {
-    if (!window.confirm('Are you sure you want to delete this file?')) {
+  const deleteFile = async (folderId, fileUrls) => {
+    if (!window.confirm('Are you sure you want to delete this folder and all its files?')) {
       return;
     }
 
     try {
-      if (fileUrl) {
-        await supabase.storage.from('office-forms').remove([fileUrl]);
+      // Delete all files in the folder
+      if (fileUrls && fileUrls.length > 0) {
+        await supabase.storage.from('office-forms').remove(fileUrls);
       }
 
       const { error } = await supabase
-        .from('forms')
+        .from('folders')
         .delete()
-        .eq('id', fileId);
+        .eq('id', folderId);
 
       if (error) throw error;
       fetchFiles();
     } catch (error) {
-      alert('Error deleting file: ' + error.message);
+      alert('Error deleting folder: ' + error.message);
     }
   };
 
@@ -133,49 +155,40 @@ function FileList() {
           </div>
         ) : (
           <div className="files-list">
-            {files.map((file) => (
-              <div key={file.id} className="file-item">
+            {files.map((folder) => (
+              <div key={folder.id} className="file-item">
                 <div className="file-info">
                   <div className="file-header">
-                    <span className="file-icon-large">{getFileIcon(file.file_url || '')}</span>
+                    <span className="file-icon-large">📁</span>
                     <div>
-                      <h3>{file.student_name}</h3>
-                      <p>{file.form_type}</p>
+                      <h3>{folder.folder_name}</h3>
+                      <p>{folder.file_count} file(s)</p>
                     </div>
                   </div>
                   <div className="file-meta">
-                    <span className="file-type-badge">{getFileType(file.file_url || '')}</span>
                     <span className="file-date">
-                      {new Date(file.created_at).toLocaleDateString()}
+                      {new Date(folder.created_at).toLocaleDateString()}
                     </span>
                   </div>
+                  {folder.notes && (
+                    <p className="folder-notes">{folder.notes}</p>
+                  )}
                 </div>
                 <div className="file-actions">
-                  <span className={`badge badge-${file.classification.toLowerCase()}`}>
-                    {file.classification}
+                  <span className={`badge badge-${folder.classification.toLowerCase()}`}>
+                    {folder.classification}
                   </span>
-                  {file.file_url && (
-                    <>
-                      <button
-                        onClick={() => viewFile(file.file_url)}
-                        className="btn-view"
-                        title="View Document"
-                      >
-                        👁️ View
-                      </button>
-                      <button
-                        onClick={() => downloadFile(file.file_url)}
-                        className="btn-secondary"
-                        title="Download Document"
-                      >
-                        ⬇️ Download
-                      </button>
-                    </>
-                  )}
                   <button
-                    onClick={() => deleteFile(file.id, file.file_url)}
+                    onClick={() => openFolder(folder)}
+                    className="btn-view"
+                    title="Open Folder"
+                  >
+                    🔓 Open
+                  </button>
+                  <button
+                    onClick={() => deleteFile(folder.id, folder.file_urls)}
                     className="btn-danger"
-                    title="Delete"
+                    title="Delete Folder"
                   >
                     🗑️
                   </button>
@@ -185,6 +198,79 @@ function FileList() {
           </div>
         )}
       </div>
+
+      {/* Password Modal */}
+      {showPasswordModal && selectedFolder && (
+        <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>🔒 Enter Password</h2>
+            <p>This folder is password protected</p>
+            <p><strong>{selectedFolder.folder_name}</strong></p>
+            
+            <div className="form-group" style={{ marginTop: '20px' }}>
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                placeholder="Enter folder password"
+                onKeyPress={(e) => e.key === 'Enter' && verifyPassword()}
+                autoFocus
+              />
+            </div>
+
+            {passwordError && (
+              <div className="message" style={{ color: '#eb445a', marginTop: '10px' }}>
+                {passwordError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={verifyPassword} className="btn-primary">
+                Unlock
+              </button>
+              <button onClick={() => setShowPasswordModal(false)} className="btn-secondary">
+                Cancel
+              </button>
+            </div>
+
+            {/* Show files after unlock */}
+            {passwordInput === selectedFolder.folder_password && (
+              <div style={{ marginTop: '20px', borderTop: '1px solid #ddd', paddingTop: '20px' }}>
+                <h3>Files in folder:</h3>
+                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  {selectedFolder.file_urls.map((fileUrl, index) => (
+                    <div key={index} style={{ 
+                      padding: '10px', 
+                      borderBottom: '1px solid #eee',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <span>📄 {fileUrl.split('/').pop()}</span>
+                      <div style={{ display: 'flex', gap: '5px' }}>
+                        <button
+                          onClick={() => viewFile(fileUrl)}
+                          className="btn-view"
+                          style={{ padding: '5px 10px', fontSize: '12px' }}
+                        >
+                          👁️ View
+                        </button>
+                        <button
+                          onClick={() => downloadFile(fileUrl)}
+                          className="btn-secondary"
+                          style={{ padding: '5px 10px', fontSize: '12px' }}
+                        >
+                          ⬇️ Download
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

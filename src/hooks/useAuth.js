@@ -1,84 +1,37 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
-
-    const initAuth = async () => {
-      // Skip if already initialized
-      if (initialized) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+    const checkAuth = () => {
+      const isAuthenticated = localStorage.getItem('isAuthenticated');
+      const authTime = localStorage.getItem('authTime');
+      
+      // Check if authenticated and session is still valid (24 hours)
+      if (isAuthenticated === 'true' && authTime) {
+        const timeElapsed = Date.now() - parseInt(authTime);
+        const twentyFourHours = 24 * 60 * 60 * 1000;
         
-        if (mounted) {
-          if (session?.user) {
-            setUser(session.user);
-            await fetchUserRole(session.user.id);
-          } else {
-            setUser(null);
-            setRole(null);
-          }
-          setLoading(false);
-          setInitialized(true);
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        if (mounted) {
-          setLoading(false);
+        if (timeElapsed < twentyFourHours) {
+          setUser({ id: 'admin', email: 'admin' });
+          setRole('ADMIN');
+        } else {
+          // Session expired
+          localStorage.removeItem('isAuthenticated');
+          localStorage.removeItem('authTime');
+          setUser(null);
+          setRole(null);
         }
       }
+      
+      setLoading(false);
     };
 
-    initAuth();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (mounted) {
-          if (session?.user) {
-            setUser(session.user);
-            await fetchUserRole(session.user.id);
-          } else {
-            setUser(null);
-            setRole(null);
-          }
-        }
-      }
-    );
-
-    return () => {
-      mounted = false;
-      authListener?.subscription?.unsubscribe();
-    };
-  }, [initialized]);
-
-  const fetchUserRole = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .single();
-
-      if (!error && data) {
-        setRole(data.role);
-      } else {
-        setRole(null);
-      }
-    } catch (error) {
-      console.error('Error fetching role:', error);
-      setRole(null);
-    }
-  };
+    checkAuth();
+  }, []);
 
   const isAdmin = () => role === 'ADMIN';
 

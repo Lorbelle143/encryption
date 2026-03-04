@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import './Login.css';
 
 function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [masterKey, setMasterKey] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const history = useHistory();
@@ -17,34 +14,20 @@ function Login() {
     setMessage('');
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      const correctMasterKey = import.meta.env.VITE_MASTER_KEY;
+      
+      if (!correctMasterKey) {
+        throw new Error('Master key not configured. Please set VITE_MASTER_KEY in .env file');
+      }
 
-      if (error) throw error;
-      history.push('/dashboard');
-    } catch (error) {
-      setMessage(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignUp = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage('');
-
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password
-      });
-
-      if (error) throw error;
-      setMessage('Account created! Check your email to confirm, then login.');
-      setIsSignUp(false);
+      if (masterKey === correctMasterKey) {
+        // Store authentication in localStorage
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('authTime', Date.now().toString());
+        history.push('/dashboard');
+      } else {
+        throw new Error('Invalid master key');
+      }
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -64,26 +47,16 @@ function Login() {
         </div>
 
         <div className="login-card">
-          <h2>{isSignUp ? 'Create Account' : 'Welcome Back'}</h2>
+          <h2>Admin Access</h2>
           
-          <form onSubmit={isSignUp ? handleSignUp : handleLogin}>
+          <form onSubmit={handleLogin}>
             <div className="form-group">
-              <label>Email Address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Password</label>
+              <label>Master Key</label>
               <input
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={masterKey}
+                onChange={(e) => setMasterKey(e.target.value)}
+                placeholder="Enter master key"
                 required
                 disabled={loading}
               />
@@ -92,16 +65,7 @@ function Login() {
             {message && <div className="message">{message}</div>}
 
             <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Loading...' : isSignUp ? 'Create Account' : 'Sign In'}
-            </button>
-
-            <button
-              type="button"
-              className="btn-link"
-              onClick={() => setIsSignUp(!isSignUp)}
-              disabled={loading}
-            >
-              {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
+              {loading ? 'Verifying...' : 'Access System'}
             </button>
           </form>
         </div>
