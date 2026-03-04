@@ -13,6 +13,12 @@ function FileList() {
   const [passwordInput, setPasswordInput] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFolder, setEditFolder] = useState(null);
+  const [editFolderName, setEditFolderName] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editClassification, setEditClassification] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
 
   const fetchFiles = async () => {
     setLoading(true);
@@ -54,6 +60,38 @@ function FileList() {
     setShowPasswordModal(true);
     setPasswordInput('');
     setPasswordError('');
+  };
+
+  const openEditModal = (folder) => {
+    setEditFolder(folder);
+    setEditFolderName(folder.folder_name);
+    setEditNotes(folder.notes || '');
+    setEditClassification(folder.classification);
+    setShowEditModal(true);
+  };
+
+  const handleEditSubmit = async () => {
+    setEditLoading(true);
+    try {
+      const { error } = await supabase
+        .from('folders')
+        .update({
+          folder_name: editFolderName,
+          notes: editNotes,
+          classification: editClassification
+        })
+        .eq('id', editFolder.id);
+
+      if (error) throw error;
+
+      setShowEditModal(false);
+      fetchFiles();
+      alert('Folder updated successfully!');
+    } catch (error) {
+      alert('Error updating folder: ' + error.message);
+    } finally {
+      setEditLoading(false);
+    }
   };
 
   const verifyPassword = () => {
@@ -186,6 +224,13 @@ function FileList() {
                     🔓 Open
                   </button>
                   <button
+                    onClick={() => openEditModal(folder)}
+                    className="btn-secondary"
+                    title="Edit Folder"
+                  >
+                    ✏️ Edit
+                  </button>
+                  <button
                     onClick={() => deleteFile(folder.id, folder.file_urls)}
                     className="btn-danger"
                     title="Delete Folder"
@@ -268,6 +313,68 @@ function FileList() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && editFolder && (
+        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>✏️ Edit Folder</h2>
+            
+            <div className="form-group" style={{ marginTop: '20px' }}>
+              <label>Folder Name</label>
+              <input
+                type="text"
+                value={editFolderName}
+                onChange={(e) => setEditFolderName(e.target.value)}
+                placeholder="Enter folder name"
+                disabled={editLoading}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Classification Level</label>
+              <select
+                value={editClassification}
+                onChange={(e) => setEditClassification(e.target.value)}
+                disabled={editLoading}
+              >
+                <option value="PUBLIC">Public</option>
+                <option value="INTERNAL">Internal</option>
+                <option value="CONFIDENTIAL">Confidential</option>
+                <option value="RESTRICTED">Restricted</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Notes</label>
+              <textarea
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                placeholder="Add any additional notes"
+                rows="4"
+                disabled={editLoading}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button 
+                onClick={handleEditSubmit} 
+                className="btn-primary"
+                disabled={editLoading}
+              >
+                {editLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button 
+                onClick={() => setShowEditModal(false)} 
+                className="btn-secondary"
+                disabled={editLoading}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

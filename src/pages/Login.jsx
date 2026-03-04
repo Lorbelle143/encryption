@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import logo from '../assets/logo.jpg';
 import './Login.css';
 
 function Login() {
@@ -40,7 +41,7 @@ function Login() {
       <div className="login-container">
         <div className="login-header">
           <div className="login-icon">
-            <img src="/logo.png" alt="" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
+            <img src={logo} alt="NBSC Logo" style={{ width: '300px', height: '300px', objectFit: 'contain' }} />
           </div>
           <h1>NBSC Guidance Counseling</h1>
           <p>Secure Document Management System</p>

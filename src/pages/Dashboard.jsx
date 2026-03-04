@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import logo from '../assets/logo.jpg';
 import './Dashboard.css';
 
 function Dashboard() {
@@ -55,7 +56,7 @@ function Dashboard() {
       <header className="header dashboard-header">
         <div className="header-left">
           <div className="logo">
-            <img src="/logo.png" alt="" />
+            <img src={logo} alt="NBSC Logo" />
           </div>
           <div className="header-info">
             <h1>NBSC Guidance Counseling</h1>

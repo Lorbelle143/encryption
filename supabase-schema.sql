@@ -78,6 +78,13 @@ ON folders FOR INSERT
 TO public
 WITH CHECK (true);
 
+-- Allow public to update folders
+CREATE POLICY "Public can update folders"
+ON folders FOR UPDATE
+TO public
+USING (true)
+WITH CHECK (true);
+
 -- Allow public to delete folders
 CREATE POLICY "Public can delete folders"
 ON folders FOR DELETE
