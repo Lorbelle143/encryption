@@ -19,6 +19,8 @@ function FileList() {
   const [editNotes, setEditNotes] = useState('');
   const [editClassification, setEditClassification] = useState('');
   const [editLoading, setEditLoading] = useState(false);
+  const [addFiles, setAddFiles] = useState([]);
+  const [addingFiles, setAddingFiles] = useState(false);
 
   const fetchFiles = async () => {
     setLoading(true);
@@ -96,13 +98,94 @@ function FileList() {
 
   const verifyPassword = () => {
     if (passwordInput === selectedFolder.folder_password) {
-      setShowPasswordModal(false);
       setPasswordError('');
-      // Show files in the folder
-      alert(`Folder unlocked! Files: ${selectedFolder.file_urls.length}`);
-      // You can implement a file viewer here
+      // Password is correct, modal stays open to show files
     } else {
       setPasswordError('Incorrect password');
+    }
+  };
+
+  const handleAddFiles = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    
+    if (selectedFiles.length === 0) return;
+
+    const invalidFiles = selectedFiles.filter(file => {
+      if (file.type !== 'application/pdf') return true;
+      if (file.size > 10 * 1024 * 1024) return true;
+      return false;
+    });
+
+    if (invalidFiles.length > 0) {
+      alert('All files must be PDF and less than 10MB each');
+      return;
+    }
+
+    setAddFiles(selectedFiles);
+  };
+
+  const uploadAdditionalFiles = async () => {
+    if (addFiles.length === 0) {
+      alert('Please select files to add');
+      return;
+    }
+
+    setAddingFiles(true);
+    try {
+      const timestamp = Date.now();
+      const uploadedFiles = [];
+
+      for (let i = 0; i < addFiles.length; i++) {
+        const file = addFiles[i];
+        const fileName = `${selectedFolder.folder_name}/${timestamp}_${file.name}`;
+        
+        const { data, error } = await supabase.storage
+          .from('office-forms')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+        
+        if (error) throw error;
+        uploadedFiles.push(fileName);
+      }
+
+      // Update folder with new files
+      const updatedFileUrls = [...selectedFolder.file_urls, ...uploadedFiles];
+      const { error: dbError } = await supabase
+        .from('folders')
+        .update({
+          file_urls: updatedFileUrls,
+          file_count: updatedFileUrls.length
+        })
+        .eq('id', selectedFolder.id);
+
+      if (dbError) throw dbError;
+
+      alert(`Successfully added ${addFiles.length} file(s)!`);
+      setAddFiles([]);
+      setShowPasswordModal(false);
+      fetchFiles();
+    } catch (error) {
+      alert('Error adding files: ' + error.message);
+    } finally {
+      setAddingFiles(false);
+    }
+  };
+
+  const downloadAllFiles = async () => {
+    if (!selectedFolder || selectedFolder.file_urls.length === 0) return;
+
+    try {
+      for (let i = 0; i < selectedFolder.file_urls.length; i++) {
+        const fileUrl = selectedFolder.file_urls[i];
+        await downloadFile(fileUrl);
+        // Small delay between downloads
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      alert(`Downloaded all ${selectedFolder.file_urls.length} files!`);
+    } catch (error) {
+      alert('Error downloading files: ' + error.message);
     }
   };
 
@@ -281,8 +364,18 @@ function FileList() {
             {/* Show files after unlock */}
             {passwordInput === selectedFolder.folder_password && (
               <div style={{ marginTop: '20px', borderTop: '1px solid #ddd', paddingTop: '20px' }}>
-                <h3>Files in folder:</h3>
-                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h3>Files in folder ({selectedFolder.file_urls.length}):</h3>
+                  <button
+                    onClick={downloadAllFiles}
+                    className="btn-primary"
+                    style={{ padding: '8px 16px', fontSize: '13px' }}
+                  >
+                    ⬇️ Download All
+                  </button>
+                </div>
+
+                <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '20px' }}>
                   {selectedFolder.file_urls.map((fileUrl, index) => (
                     <div key={index} style={{ 
                       padding: '10px', 
@@ -310,6 +403,34 @@ function FileList() {
                       </div>
                     </div>
                   ))}
+                </div>
+
+                {/* Add more files section */}
+                <div style={{ borderTop: '1px solid #ddd', paddingTop: '20px' }}>
+                  <h4>Add More Files:</h4>
+                  <div style={{ marginTop: '12px' }}>
+                    <input
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      multiple
+                      onChange={handleAddFiles}
+                      disabled={addingFiles}
+                      style={{ marginBottom: '12px' }}
+                    />
+                    {addFiles.length > 0 && (
+                      <div style={{ marginBottom: '12px', fontSize: '13px', color: '#666' }}>
+                        {addFiles.length} file(s) selected
+                      </div>
+                    )}
+                    <button
+                      onClick={uploadAdditionalFiles}
+                      className="btn-primary"
+                      disabled={addingFiles || addFiles.length === 0}
+                      style={{ padding: '8px 16px', fontSize: '13px' }}
+                    >
+                      {addingFiles ? 'Uploading...' : '➕ Add Files'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
